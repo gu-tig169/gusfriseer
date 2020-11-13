@@ -9,7 +9,6 @@ void main() {
       home: MyHomePage()));
 }
 
-//testingcommit
 class FilterOptions {
   static const String All = 'All';
   static const String Done = 'Done';
@@ -109,23 +108,21 @@ class _MyHomePageState extends State<MyHomePage> {
                   trailing: GestureDetector(
                     child: Icon(Icons.remove_circle_outline),
                     onTap: () {
-                      toDoList.removeWhere((element) =>
-                          element.id == filteredToDoList[index].id);
-                      if (filteredToDoList.isNotEmpty) {
-                        filteredToDoList.removeAt(index);
-                      }
-                      setState(() {}); //?
+                      var itemToRemove = filteredToDoList[index];
+
+                      setState(() {
+                        filteredToDoList.remove(itemToRemove);
+                      });
+
+                      toDoList.removeWhere(
+                          (element) => element.id == itemToRemove.id);
                     },
                   ),
                   leading: Checkbox(
                     value: filteredToDoList[index].status,
                     onChanged: (bool newValue) {
                       setState(() {
-                        print(toDoList[index].status);
-                        print(filteredToDoList[index].status);
                         filteredToDoList[index].status = newValue;
-                        print(toDoList[index].status);
-                        print(filteredToDoList[index].status);
                       });
                     },
                   )),
