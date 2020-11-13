@@ -132,6 +132,7 @@ class _MyHomePageState extends State<MyHomePage> {
         onPressed: () {
           moveToSecondPage();
         },
+        splashColor: Colors.white,
         child: Text(
           '+',
           style: TextStyle(fontSize: 30),
@@ -171,6 +172,8 @@ class _MyAddPageState extends State<MyAddPage> {
               }
             },
             child: const Text('Add', style: TextStyle(fontSize: 20)),
+            color: Colors.green,
+            splashColor: Colors.white,
           ),
         ]));
   }
