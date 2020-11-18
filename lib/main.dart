@@ -57,7 +57,7 @@ class _MyHomePageState extends State<MyHomePage> {
   void moveToSecondPage() async {
     final information = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => MyAddPage()),
+      MaterialPageRoute(builder: (context) => SecondView()),
     );
     updateInformation(information);
   }

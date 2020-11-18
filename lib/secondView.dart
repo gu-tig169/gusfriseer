@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-class MyAddPage extends StatefulWidget {
+class SecondView extends StatefulWidget {
   @override
-  _MyAddPageState createState() => _MyAddPageState();
+  _SecondViewState createState() => _SecondViewState();
 }
 
-class _MyAddPageState extends State<MyAddPage> {
+class _SecondViewState extends State<SecondView> {
   final TextEditingController userInputController = new TextEditingController();
 
   @override
