@@ -1,5 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:erikstodoapp/secondView.dart';
+import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
+
+class MyState extends ChangeNotifier {}
 
 void main() {
   runApp(MaterialApp(
@@ -19,10 +25,18 @@ class FilterOptions {
 }
 
 class Item {
-  int id;
-  String value;
-  bool status;
-  Item(this.id, this.value, this.status);
+  String id;
+  String title;
+  bool done;
+  Item({this.id, this.title, this.done});
+
+  factory Item.fromJson(Map<String, dynamic> json) {
+    return Item(
+      id: json['id'],
+      title: json['title'],
+      done: json['done'],
+    );
+  }
 }
 
 class MyHomePage extends StatefulWidget {
@@ -32,24 +46,64 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   String _information = '';
+  String url(String id) {
+    if (id != '') {
+      return 'https://todoapp-api-vldfm.ondigitalocean.app/todos/' +
+          id +
+          '?key=6be3b3e2-44c1-4de8-ada3-2915346b8253';
+    } else {
+      return 'https://todoapp-api-vldfm.ondigitalocean.app/todos?key=6be3b3e2-44c1-4de8-ada3-2915346b8253';
+    }
+  }
 
-  List<Item> toDoList = [];
-  List<Item> filteredToDoList = [];
-  addToList(int id, String value, bool status) {
-    toDoList.add(new Item(id, value, status));
+  Future<List<Item>> toDoList;
+
+  Future<List<Item>> getToDoList() async {
+    var response = await http.get(url(''));
+    List jsonData = json.decode(response.body);
+    return jsonData.map((toDo) => new Item.fromJson(toDo)).toList();
+  }
+
+  Future<List<Item>> createItem() async {
+    var response = await http.post(url(''));
+    List jsonData = json.decode(response.body);
+    return jsonData.map((toDo) => new Item.fromJson(toDo)).toList();
+  }
+
+  Future<List<Item>> updateItem(Item item) async {
+    var response = await http.put(url(item.id),
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: jsonEncode(<String, dynamic>{
+          'id': item.id,
+          'title': item.title,
+          'done': item.done
+        }));
+    List jsonData = json.decode(response.body);
+    return jsonData.map((toDo) => new Item.fromJson(toDo)).toList();
+  }
+
+  Future<List<Item>> deleteItem(String id) async {
+    var response = await http.delete(url(id));
+    List jsonData = json.decode(response.body);
+    return jsonData.map((toDo) => new Item.fromJson(toDo)).toList();
   }
 
   @override
   void initState() {
     super.initState();
-    filteredToDoList = toDoList;
+    toDoList = getToDoList();
   }
 
   void updateInformation(String information) {
     if (information != null) {
       setState(() {
         _information = information;
-        addToList(toDoList.length, _information, false);
+        toDoList = createItem().then((value) => updateItem(new Item(
+            id: value[value.length - 1].id,
+            title: _information,
+            done: value[value.length - 1].done)));
       });
     }
   }
@@ -65,18 +119,19 @@ class _MyHomePageState extends State<MyHomePage> {
   void filterAction(String choice) {
     if (choice == FilterOptions.All) {
       setState(() {
-        filteredToDoList = toDoList;
+        toDoList = getToDoList();
       });
     }
     if (choice == FilterOptions.Done) {
       setState(() {
-        filteredToDoList = toDoList.where((element) => element.status).toList();
+        toDoList = getToDoList()
+            .then((value) => value.where((element) => element.done).toList());
       });
     }
     if (choice == FilterOptions.NotDone) {
       setState(() {
-        filteredToDoList =
-            toDoList.where((element) => !element.status).toList();
+        toDoList = getToDoList()
+            .then((value) => value.where((element) => !element.done).toList());
       });
     }
   }
@@ -90,7 +145,7 @@ class _MyHomePageState extends State<MyHomePage> {
           actions: [
             _filterMenu(),
           ]),
-      body: _listBuilder(),
+      body: _itemListView(),
       floatingActionButton: _addItemsToListButton(),
     );
   }
@@ -108,31 +163,42 @@ class _MyHomePageState extends State<MyHomePage> {
         });
   }
 
-  Widget _listBuilder() {
+  Widget _itemListView() {
+    return FutureBuilder<List<Item>>(
+        future: toDoList,
+        builder: (context, snapshot) {
+          if (snapshot.hasData) {
+            return _listBuilder(snapshot.data);
+          }
+          return _listBuilder([]);
+        });
+  }
+
+  Widget _listBuilder(List<Item> list) {
     return ListView.builder(
-        itemCount: filteredToDoList.length,
+        itemCount: list.length,
         itemBuilder: (context, index) {
           return Card(
             child: ListTile(
-                title: Text(filteredToDoList[index].value),
+                title: Text(list[index].title),
                 trailing: GestureDetector(
                   child: Icon(Icons.cancel_outlined),
                   onTap: () {
-                    var itemToRemove = filteredToDoList[index];
-
+                    var itemToRemove = list[index];
+                    deleteItem(itemToRemove.id);
                     setState(() {
-                      filteredToDoList.remove(itemToRemove);
+                      toDoList.then((value) => value.remove(itemToRemove));
                     });
-
-                    toDoList.removeWhere(
-                        (element) => element.id == itemToRemove.id);
                   },
                 ),
                 leading: Checkbox(
-                  value: filteredToDoList[index].status,
+                  value: list[index].done,
                   onChanged: (bool newValue) {
                     setState(() {
-                      filteredToDoList[index].status = newValue;
+                      toDoList = updateItem(new Item(
+                          id: list[index].id,
+                          title: list[index].title,
+                          done: newValue));
                     });
                   },
                 )),
