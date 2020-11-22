@@ -50,9 +50,9 @@ class _MyHomePageState extends State<MyHomePage> {
     if (id != '') {
       return 'https://todoapp-api-vldfm.ondigitalocean.app/todos/' +
           id +
-          '?key=6be3b3e2-44c1-4de8-ada3-2915346b8253';
+          '?key=1d8993c3-159e-4cb7-929c-20bcb6544bb5';
     } else {
-      return 'https://todoapp-api-vldfm.ondigitalocean.app/todos?key=6be3b3e2-44c1-4de8-ada3-2915346b8253';
+      return 'https://todoapp-api-vldfm.ondigitalocean.app/todos?key=1d8993c3-159e-4cb7-929c-20bcb6544bb5';
     }
   }
 
@@ -64,8 +64,16 @@ class _MyHomePageState extends State<MyHomePage> {
     return jsonData.map((toDo) => new Item.fromJson(toDo)).toList();
   }
 
-  Future<List<Item>> createItem() async {
-    var response = await http.post(url(''));
+  Future<List<Item>> createItem(Item item) async {
+    var response = await http.post(url(item.id),
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: jsonEncode(<String, dynamic>{
+          'id': item.id,
+          'title': item.title,
+          'done': item.done
+        }));
     List jsonData = json.decode(response.body);
     return jsonData.map((toDo) => new Item.fromJson(toDo)).toList();
   }
@@ -100,10 +108,8 @@ class _MyHomePageState extends State<MyHomePage> {
     if (information != null) {
       setState(() {
         _information = information;
-        toDoList = createItem().then((value) => updateItem(new Item(
-            id: value[value.length - 1].id,
-            title: _information,
-            done: value[value.length - 1].done)));
+        toDoList =
+            createItem(new Item(id: '', title: _information, done: false));
       });
     }
   }
@@ -180,7 +186,12 @@ class _MyHomePageState extends State<MyHomePage> {
         itemBuilder: (context, index) {
           return Card(
             child: ListTile(
-                title: Text(list[index].title),
+                title: Text(
+                  list[index].title,
+                  style: list[index].done
+                      ? TextStyle(decoration: TextDecoration.lineThrough)
+                      : TextStyle(decoration: TextDecoration.none),
+                ),
                 trailing: GestureDetector(
                   child: Icon(Icons.cancel_outlined),
                   onTap: () {
