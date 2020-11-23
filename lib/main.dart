@@ -1,4 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:erikstodoapp/secondView.dart';
+import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
+
+class MyState extends ChangeNotifier {}
 
 void main() {
   runApp(MaterialApp(
@@ -18,10 +25,18 @@ class FilterOptions {
 }
 
 class Item {
-  int id;
-  String value;
-  bool status;
-  Item(this.id, this.value, this.status);
+  String id;
+  String title;
+  bool done;
+  Item({this.id, this.title, this.done});
+
+  factory Item.fromJson(Map<String, dynamic> json) {
+    return Item(
+      id: json['id'],
+      title: json['title'],
+      done: json['done'],
+    );
+  }
 }
 
 class MyHomePage extends StatefulWidget {
@@ -31,24 +46,70 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   String _information = '';
+  String url(String id) {
+    if (id != '') {
+      return 'https://todoapp-api-vldfm.ondigitalocean.app/todos/' +
+          id +
+          '?key=1d8993c3-159e-4cb7-929c-20bcb6544bb5';
+    } else {
+      return 'https://todoapp-api-vldfm.ondigitalocean.app/todos?key=1d8993c3-159e-4cb7-929c-20bcb6544bb5';
+    }
+  }
 
-  List<Item> toDoList = [];
-  List<Item> filteredToDoList = [];
-  addToList(int id, String value, bool status) {
-    toDoList.add(new Item(id, value, status));
+  Future<List<Item>> toDoList;
+
+  Future<List<Item>> getToDoList() async {
+    var response = await http.get(url(''));
+    List jsonData = json.decode(response.body);
+    return jsonData.map((toDo) => new Item.fromJson(toDo)).toList();
+  }
+
+  Future<List<Item>> createItem(Item item) async {
+    var response = await http.post(url(item.id),
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: jsonEncode(<String, dynamic>{
+          'id': item.id,
+          'title': item.title,
+          'done': item.done
+        }));
+    List jsonData = json.decode(response.body);
+    return jsonData.map((toDo) => new Item.fromJson(toDo)).toList();
+  }
+
+  Future<List<Item>> updateItem(Item item) async {
+    var response = await http.put(url(item.id),
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: jsonEncode(<String, dynamic>{
+          'id': item.id,
+          'title': item.title,
+          'done': item.done
+        }));
+    List jsonData = json.decode(response.body);
+    return jsonData.map((toDo) => new Item.fromJson(toDo)).toList();
+  }
+
+  Future<List<Item>> deleteItem(String id) async {
+    var response = await http.delete(url(id));
+    List jsonData = json.decode(response.body);
+    return jsonData.map((toDo) => new Item.fromJson(toDo)).toList();
   }
 
   @override
   void initState() {
     super.initState();
-    filteredToDoList = toDoList;
+    toDoList = getToDoList();
   }
 
   void updateInformation(String information) {
     if (information != null) {
       setState(() {
         _information = information;
-        addToList(toDoList.length, _information, false);
+        toDoList =
+            createItem(new Item(id: '', title: _information, done: false));
       });
     }
   }
@@ -56,7 +117,7 @@ class _MyHomePageState extends State<MyHomePage> {
   void moveToSecondPage() async {
     final information = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => MyAddPage()),
+      MaterialPageRoute(builder: (context) => SecondView()),
     );
     updateInformation(information);
   }
@@ -64,18 +125,19 @@ class _MyHomePageState extends State<MyHomePage> {
   void filterAction(String choice) {
     if (choice == FilterOptions.All) {
       setState(() {
-        filteredToDoList = toDoList;
+        toDoList = getToDoList();
       });
     }
     if (choice == FilterOptions.Done) {
       setState(() {
-        filteredToDoList = toDoList.where((element) => element.status).toList();
+        toDoList = getToDoList()
+            .then((value) => value.where((element) => element.done).toList());
       });
     }
     if (choice == FilterOptions.NotDone) {
       setState(() {
-        filteredToDoList =
-            toDoList.where((element) => !element.status).toList();
+        toDoList = getToDoList()
+            .then((value) => value.where((element) => !element.done).toList());
       });
     }
   }
@@ -84,97 +146,87 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Things you gotta do, get to it!'),
-        centerTitle: true,
-        actions: <Widget>[
-          PopupMenuButton<String>(
-              onSelected: filterAction,
-              itemBuilder: (BuildContext context) {
-                return FilterOptions.choices
-                    .map((String choice) => PopupMenuItem<String>(
-                          value: choice,
-                          child: Text(choice),
-                        ))
-                    .toList();
-              })
-        ],
-      ),
-      body: ListView.builder(
-          itemCount: filteredToDoList.length,
-          itemBuilder: (context, index) {
-            return Card(
-              child: ListTile(
-                  title: Text(filteredToDoList[index].value),
-                  trailing: GestureDetector(
-                    child: Icon(Icons.remove_circle_outline),
-                    onTap: () {
-                      var itemToRemove = filteredToDoList[index];
-
-                      setState(() {
-                        filteredToDoList.remove(itemToRemove);
-                      });
-
-                      toDoList.removeWhere(
-                          (element) => element.id == itemToRemove.id);
-                    },
-                  ),
-                  leading: Checkbox(
-                    value: filteredToDoList[index].status,
-                    onChanged: (bool newValue) {
-                      setState(() {
-                        filteredToDoList[index].status = newValue;
-                      });
-                    },
-                  )),
-            );
-          }),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          moveToSecondPage();
-        },
-        splashColor: Colors.white,
-        child: Text(
-          '+',
-          style: TextStyle(fontSize: 30),
-        ),
-      ),
+          title: Text('Things you gotta do, get to it!'),
+          centerTitle: true,
+          actions: [
+            _filterMenu(),
+          ]),
+      body: _itemListView(),
+      floatingActionButton: _addItemsToListButton(),
     );
   }
-}
 
-class MyAddPage extends StatefulWidget {
-  @override
-  _MyAddPageState createState() => _MyAddPageState();
-}
+  Widget _filterMenu() {
+    return PopupMenuButton<String>(
+        onSelected: filterAction,
+        itemBuilder: (BuildContext context) {
+          return FilterOptions.choices
+              .map((String choice) => PopupMenuItem<String>(
+                    value: choice,
+                    child: Text(choice),
+                  ))
+              .toList();
+        });
+  }
 
-class _MyAddPageState extends State<MyAddPage> {
-  final TextEditingController userInputController = new TextEditingController();
+  Widget _itemListView() {
+    return FutureBuilder<List<Item>>(
+        future: toDoList,
+        builder: (context, snapshot) {
+          if (snapshot.hasData) {
+            return _listBuilder(snapshot.data);
+          }
+          return _listBuilder([]);
+        });
+  }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-        appBar: AppBar(
-          title: Text('Add something to your list!'),
-          centerTitle: true,
-        ),
-        body: Column(children: [
-          TextField(
-            controller: userInputController,
-            decoration: InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: 'Enter something to do'),
-          ),
-          RaisedButton(
-            onPressed: () {
-              if (userInputController.text != '' &&
-                  userInputController.text != null) {
-                Navigator.pop(context, userInputController.text);
-              }
-            },
-            child: const Text('Add', style: TextStyle(fontSize: 20)),
-            color: Colors.green,
-            splashColor: Colors.white,
-          ),
-        ]));
+  Widget _listBuilder(List<Item> list) {
+    return ListView.builder(
+        itemCount: list.length,
+        itemBuilder: (context, index) {
+          return Card(
+            child: ListTile(
+                title: Text(
+                  list[index].title,
+                  style: list[index].done
+                      ? TextStyle(decoration: TextDecoration.lineThrough)
+                      : TextStyle(decoration: TextDecoration.none),
+                ),
+                trailing: GestureDetector(
+                  child: Icon(Icons.cancel_outlined),
+                  onTap: () {
+                    var itemToRemove = list[index];
+                    deleteItem(itemToRemove.id);
+                    setState(() {
+                      toDoList.then((value) => value.remove(itemToRemove));
+                    });
+                  },
+                ),
+                leading: Checkbox(
+                  value: list[index].done,
+                  onChanged: (bool newValue) {
+                    setState(() {
+                      toDoList = updateItem(new Item(
+                          id: list[index].id,
+                          title: list[index].title,
+                          done: newValue));
+                    });
+                  },
+                )),
+          );
+        });
+  }
+
+  Widget _addItemsToListButton() {
+    return FloatingActionButton(
+      onPressed: () {
+        moveToSecondPage();
+      },
+      splashColor: Colors.white,
+      child: Text(
+        '+',
+        style: TextStyle(fontSize: 30),
+      ),
+    );
   }
 }
