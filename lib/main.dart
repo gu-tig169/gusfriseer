@@ -1,11 +1,8 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:erikstodoapp/secondView.dart';
-import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
-
-class MyState extends ChangeNotifier {}
+import 'package:erikstodoapp/item.dart';
 
 void main() {
   runApp(MaterialApp(
@@ -24,21 +21,6 @@ class FilterOptions {
   static const List<String> choices = <String>[All, Done, NotDone];
 }
 
-class Item {
-  String id;
-  String title;
-  bool done;
-  Item({this.id, this.title, this.done});
-
-  factory Item.fromJson(Map<String, dynamic> json) {
-    return Item(
-      id: json['id'],
-      title: json['title'],
-      done: json['done'],
-    );
-  }
-}
-
 class MyHomePage extends StatefulWidget {
   @override
   _MyHomePageState createState() => _MyHomePageState();
@@ -50,9 +32,9 @@ class _MyHomePageState extends State<MyHomePage> {
     if (id != '') {
       return 'https://todoapp-api-vldfm.ondigitalocean.app/todos/' +
           id +
-          '?key=1d8993c3-159e-4cb7-929c-20bcb6544bb5';
+          '?key=0c9a1ab8-ed45-4ccc-94bc-e14795040437';
     } else {
-      return 'https://todoapp-api-vldfm.ondigitalocean.app/todos?key=1d8993c3-159e-4cb7-929c-20bcb6544bb5';
+      return 'https://todoapp-api-vldfm.ondigitalocean.app/todos?key=0c9a1ab8-ed45-4ccc-94bc-e14795040437';
     }
   }
 
